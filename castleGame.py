@@ -18,13 +18,13 @@ from statcast.tools.plot import addText, plotKDHist
 
 data = pd.read_csv('/Users/mattfay/Downloads/castle-solutions.csv')
 
-fieldRd1 = data.iloc[:, :-1].values.astype(np.int8)
+fieldRd1 = data.iloc[:, :-1].values.astype(np.uint8)
 
 nCastles = 10
 nTroops = 100
 weights = np.arange(1, nCastles + 1)
 
-# %% Define Plotting functions
+# %% Define some plotting functions
 
 
 def plotHist(field, scores=None, scoreLabel=None, fieldName=None):
@@ -121,7 +121,7 @@ def plotParCoords(field, ax=None, scores=None, scoreLabel=None):
     except:
         return ax
 
-# %% Define Scoring Functions/Classes
+# %% Define scoring class
 
 
 class Scorer():
@@ -179,7 +179,20 @@ class Scorer():
         '''Doc String'''
 
         record = self.score(entry)
-        return record[0] - record[2]
+        return (record[0] - record[2]) / record.sum() * 100
+
+    @property
+    def margins(self):
+        '''Doc String'''
+
+        return np.array([self.margin(entry) for entry in self.field])
+
+    @property
+    def percentiles(self):
+        '''Doc String'''
+
+        return np.array([stats.percentileofscore(self.margins, margin)
+                         for margin in self.margins])
 
     def search(self, entry):
         '''Doc String'''
@@ -189,11 +202,13 @@ class Scorer():
         while True:
             neighbors = np.tile(entry, (self.steps.shape[0], 1)) + self.steps
             neighbors = neighbors[(neighbors <= self.nTroops).all(1)]
-            margins = [self.margin(neighbor) for neighbor in neighbors]
-            maxInd = np.argmax(margins)
-            if margins[maxInd] > path[-1][1]:
-                entry = neighbors[maxInd]
-                path.append((entry, margins[maxInd]))
+            np.random.shuffle(neighbors)
+            for neighbor in neighbors:
+                margin = self.margin(neighbor)
+                if margin > path[-1][1]:
+                    entry = neighbor
+                    path.append((entry, margin))
+                    break
             else:
                 return path
 
@@ -214,31 +229,38 @@ class Scorer():
                              '- {} instead of uint8.'.format(entries.dtype))
         return entries
 
-# %% Plot and Save Round 1 Field Visualizations
+# %% Visualize round 1 field
 
 rd1Scorer = Scorer(fieldRd1, weights)
-records = rd1Scorer.scoreField()
-winMargins = (records[:, 0] - records[:, 2]) / records.shape[0] * 100
 
-percentiles = np.array([stats.percentileofscore(winMargins, winMargin)
-                        for winMargin in winMargins])
-xPercentiles = np.linspace(0, 100, 500)
-yPercentiles = np.percentile(winMargins, xPercentiles)
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-ax.plot(xPercentiles, yPercentiles)
-ax.set_xlabel('Percentile (%)')
-ax.set_ylabel('Win Margin (%)')
-ax.set_title('Field')
-fig.savefig('Win Margin Percentiles')
+def plotPercentiles(scorer, fldName=None):
+    '''Doc String'''
 
-fig = plotHist(fieldRd1, scores=winMargins, scoreLabel='Win Margin (%)',
-               fieldName='')
+    xPercentiles = np.linspace(0, 100, 500)
+    yPercentiles = np.percentile(scorer.margins, xPercentiles)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(xPercentiles, yPercentiles)
+    ax.set_xlabel('Percentile (%)')
+    ax.set_ylabel('Win Margin (%)')
+    title = 'Win Margin Percentiles'
+    if fldName is not None:
+        title += ', ' + fldName
+    fig.savefig(title)
+
+plotPercentiles(rd1Scorer)
+
+fig = plotHist(fieldRd1, scores=rd1Scorer.margins,
+               scoreLabel='Win Margin (%)', fieldName='')
 fig.savefig('Castle Histograms')
+
 fig = plotParCoords(fieldRd1)
 fig.savefig('Parallel Coordinates Chart')
-fig = plotParCoords(fieldRd1, scores=percentiles, scoreLabel='Percentile (%)')
+
+fig = plotParCoords(fieldRd1, scores=rd1Scorer.percentiles,
+                    scoreLabel='Percentile (%)')
 fig.savefig('Parallel Coordinates Chart Percentile Colored')
 
 # %% Two castle, three troops in 2d
@@ -380,7 +402,7 @@ ax.set_title('4 Castles, 3 Troops in 3D')
 
 fig.savefig('4 Castles - 3 Troops - 3d Example')
 
-# %% Generate Random Field by Different Methods
+# %% Generate random field by different methods
 # % Not included in blog post
 
 nEntries = 1000
@@ -442,113 +464,158 @@ ax.legend(loc='upper right')
 
 fig.savefig('Random vs LHS')
 
-# %% Find Best Entries to Round 1
+# %% Find best entries to round 1
 
-starts = 3600
+starts = 5000
 entries = normEntries(lhs(nCastles, starts))
-# paths = [rd1Scorer.search(entry) for entry in entries]
-# joblib.dump(paths, 'rd1Fld3600Opt.pkl')  # saved for later
-paths = joblib.load('rd1Fld3600Opt.pkl')  # later
+paths = [rd1Scorer.search(entry) for entry in entries]
+joblib.dump(paths, 'rd1FldOpt.pkl')  # saved for later
+# paths = joblib.load('rd1FldOpt.pkl')  # later
 
-# %% What's the distribution of these local minima?
+# %% Print optimal entry from round 1
 
-solutions = pd.DataFrame({'entry': [path[-1][0] for path in paths],
-                          'margin': [path[-1][1] for path in paths]})
-alpha = 0.05
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-ax, kde = plotKDHist(solutions['margin'] / fieldRd1.shape[0] * 100, ax=ax,
-                     alpha=alpha)
+def printOptEntry(paths, fldName=None):
+    '''Doc String'''
 
-x = np.linspace(solutions.margin.min(), solutions.margin.max(),
-                1000) / fieldRd1.shape[0] * 100
-y = kde.predict(x[:, None]) * 100
-ax.plot(x, y)
-ax.set_xlabel('Win Margin (%)')
-ax.set_ylim(bottom=0)
-ax.set_ylabel('Probability Density (%)')
-ax.set_title('Distribution of Local Minima')
-ax.legend(loc='upper left')
+    solutions = pd.DataFrame({'entry': [tuple(path[-1][0]) for path in paths],
+                              'margin': [path[-1][1] for path in paths]})
+    uniqueEntries = solutions.groupby('entry').mean(). \
+        sort_values('margin', ascending=False)
+    uniques = pd.DataFrame({
+        'entry': [np.array(entry) for entry in uniqueEntries.index],
+        'margin': uniqueEntries.values.flatten()})
 
-fig.savefig('Distribution of Local Minima')
+    optEntry = uniques.loc[0, 'entry']
+    if fldName is not None:
+        text = ', ' + fldName + ' Field'
+    else:
+        text = ''
+    optWinMargin = uniques.loc[0, 'margin']
+    print('''Optimal troop distribution{}:
+{} has a win margin of {:.0f}%'''.format(text, optEntry, optWinMargin))
+
+printOptEntry(paths)
+
+# %% What's the distribution of these local maxima?
+
+
+def plotLocMax(paths, alpha=0.05, fldName=None):
+    '''Doc String'''
+
+    solutions = pd.DataFrame({'entry': [path[-1][0] for path in paths],
+                              'margin': [path[-1][1] for path in paths]})
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax, kde = plotKDHist(solutions['margin'], ax=ax, alpha=alpha)
+
+    x = np.linspace(solutions.margin.min(), solutions.margin.max(), 1000)
+    y = kde.predict(x[:, None]) * 100
+    ax.plot(x, y)
+    ax.set_xlabel('Win Margin (%)')
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel('Probability Density (%)')
+    title = 'Distribution of Local Minima'
+    if fldName is not None:
+        title += ', ' + fldName
+    ax.set_title(title)
+    ax.legend(loc='upper left')
+
+    fig.savefig(title)
+    return fig
+
+plotLocMax(paths)
 
 # %% How many starts are needed to find the best one?
 
-bootstraps = 1000
-nSamples = 1000
-samples = np.array([solutions['margin'].sample(n=nSamples, replace=True)
-                    for dummy in range(bootstraps)])
-boots = \
-    np.array([samples[:, :(i + 1)].max(1)
-              for i in range(nSamples)]) / fieldRd1.shape[0] * 100
-means = boots.mean(1)
-finds = nSamples - (boots == boots.max()).sum(0) + 1
-trials = np.arange(nSamples) + 1
-percentiles = (1 - np.array([(finds > trial).sum() for trial in trials]) /
-               bootstraps) * 100
-confLim = np.percentile(boots, alpha * 100, axis=1)
 
-fig = plt.figure(figsize=(10.21, 8))
-ax = fig.add_subplot(2, 1, 1)
-ax.plot(trials, percentiles)
-ax.plot(trials, [100 * (1 - alpha)] * trials.shape[0], '--',
-        label='{:.0f}% Confidence Level'.format(1e2 * (1 - alpha)))
-ax.set_xscale('log')
-ax.set_ylabel('Confidence (%)')
-ax.set_title('Optimal Entry Search Curves')
-ax.legend(loc='lower right')
+def plotOptConf(paths, bootstraps=1000, alpha=0.05, fldName=None):
+    '''Doc String'''
 
-ax = fig.add_subplot(2, 1, 2)
-ax.plot(trials, means, label='Average')
-ax.plot(trials, confLim, label='{:.0f}% Confidence Level'.
-        format(1e2 * (1 - alpha)))
-ax.set_xscale('log')
-ax.set_xlabel('Number of Starts')
-ax.set_ylabel('Best Value (Win Margin %)')
-ax.legend(loc='lower right')
+    solutions = pd.DataFrame({'entry': [path[-1][0] for path in paths],
+                              'margin': [path[-1][1] for path in paths]})
+    nSamples = solutions.shape[0]
+    samples = np.array([solutions['margin'].sample(n=nSamples, replace=True)
+                        for dummy in range(bootstraps)])
+    boots = np.array([samples[:, :(i + 1)].max(1) for i in range(nSamples)]).T
+    means = boots.mean(0)
+    percentages = (boots == solutions.margin.max()).sum(0) / bootstraps * 100
+    trials = np.arange(nSamples) + 1
+    confLim = np.percentile(boots, alpha * 100, axis=0)
 
-fig.savefig('Optimal Entry Search Curves')
+    fig = plt.figure(figsize=(10.21, 8))
+    ax = fig.add_subplot(2, 1, 1)
+    ax.plot(trials, percentages)
+    ax.plot(trials, [100 * (1 - alpha)] * trials.shape[0], '--',
+            label='{:.0f}% Confidence Level'.format(1e2 * (1 - alpha)))
+    ax.set_xscale('log')
+    ax.set_ylabel('Confidence (%)')
+    title = 'Optimal Entry Search Curves'
+    if fldName is not None:
+        title += ', ' + fldName
+    ax.set_title(title)
+    ax.legend(loc='lower right')
+
+    ax = fig.add_subplot(2, 1, 2)
+    ax.plot(trials, means, label='Average')
+    ax.plot(trials, confLim, label='{:.0f}% Confidence Level'.
+            format(1e2 * (1 - alpha)))
+    ax.set_xscale('log')
+    ax.set_xlabel('Number of Starts')
+    ax.set_ylabel('Best Value (Win Margin %)')
+    ax.legend(loc='lower right')
+
+    fig.savefig(title)
+    return fig
+
+plotOptConf(paths)
+
 
 # %% How do the best solutions for a given field generalize? (CV solution)
 
-cv = 10
-starts = 100
-top = 10
+def plotGen(field, cv=10, starts=100, top=10, fldName=None):
+    '''Doc String'''
 
-kf = KFold(n_splits=cv, shuffle=True)
-trainMargins = np.zeros((cv, top))
-testMargins = np.zeros((cv, top))
+    kf = KFold(n_splits=cv, shuffle=True)
+    trainMargins = np.zeros((cv, top))
+    testMargins = np.zeros((cv, top))
 
-for ind, (trainInds, testInds) in enumerate(kf.split(fieldRd1)):
-    trainField, testField = fieldRd1[trainInds], fieldRd1[testInds]
-    trainScorer = Scorer(trainField, weights)
-    testScorer = Scorer(testField, weights)
-    entries = normEntries(lhs(nCastles, starts))
-    paths = [trainScorer.search(entry) for entry in entries]
-    solutions = pd.DataFrame({'entry': [tuple(path[-1][0]) for path in paths],
-                              'margin': [path[-1][1] for path in paths]})
-    uniqueSols = solutions.groupby('entry').mean(). \
-        sort_values('margin', ascending=False)
-    tops = uniqueSols.index[:top]
-    trainMargins[ind, :] = \
-        uniqueSols.values[:top].T
-    testMargins[ind, :] = [testScorer.margin(entry) for entry in tops]
+    for ind, (trainInds, testInds) in enumerate(kf.split(field)):
+        trainField, testField = field[trainInds], field[testInds]
+        trainScorer = Scorer(trainField, weights)
+        testScorer = Scorer(testField, weights)
+        entries = normEntries(lhs(trainScorer.nCastles, starts))
+        paths = [trainScorer.search(entry) for entry in entries]
+        solutions = \
+            pd.DataFrame({'entry': [tuple(path[-1][0]) for path in paths],
+                          'margin': [path[-1][1] for path in paths]})
+        uniqueSols = solutions.groupby('entry').mean(). \
+            sort_values('margin', ascending=False)
+        tops = uniqueSols.index[:top]
+        trainMargins[ind, :] = \
+            uniqueSols.values[:top].T
+        testMargins[ind, :] = [testScorer.margin(entry) for entry in tops]
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-ax.plot(np.arange(top) + 1,
-        trainMargins.sum(0) / ((cv - 1) * fieldRd1.shape[0]) * 100,
-        label='Train')
-ax.plot(np.arange(top) + 1,
-        testMargins.sum(0) / fieldRd1.shape[0] * 100,
-        label='Test')
-ax.set_xlabel('Rank')
-ax.set_ylabel('Win Margin (%)')
-ax.legend(loc='upper right')
-ax.set_title('Generalizability of Optimal Entries')
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(np.arange(top) + 1,
+            trainMargins.mean(0),
+            label='Train')
+    ax.plot(np.arange(top) + 1,
+            testMargins.mean(0),
+            label='Test')
+    ax.set_xlabel('Rank')
+    ax.set_ylabel('Win Margin (%)')
+    ax.legend(loc='upper right')
+    title = 'Generalizability of Optimal Entries'
+    if fldName is not None:
+        title += ', ' + fldName
+    ax.set_title(title)
 
-fig.savefig('Generalizability of Optimal Entries')
+    fig.savefig(title)
+
+plotGen(fieldRd1, cv=30)
 
 # %% How do the best solutions for a given field generalize?
 # % Not included in blog post
@@ -560,68 +627,72 @@ def fakeField(field, nEntries):
     return normEntries(field[np.random.randint(0, field.shape[0],
                                                size=(nEntries,
                                                      field.shape[1])),
-                             np.tile(np.arange(nCastles),
+                             np.tile(np.arange(field.shape[1]),
                                      (nEntries, 1))].astype(float))
 
-nTrials = 10
-trialSize = fieldRd1.shape[0]
-starts = 100
-top = 10
 
-fields = [fakeField(fieldRd1, trialSize) for dummy in range(nTrials)]
-scorers = [Scorer(field, weights) for field in fields]
+def plotGen2(field, nTrials=10, starts=100, top=10, fldName=None, alpha=0.05):
+    '''Doc String'''
 
-trainMargins = np.ones((nTrials, top))
-testMargins = np.ones((nTrials, nTrials - 1, top))
+    trialSize = field.shape[0]
 
+    fakeFields = [fakeField(field, trialSize) for dummy in range(nTrials)]
+    scorers = [Scorer(fakeField, weights) for fakeField in fakeFields]
 
-for i, scorer in enumerate(scorers):
-    entries = normEntries(lhs(nCastles, starts))
-    paths = [scorer.search(entry) for entry in entries]
-    solutions = pd.DataFrame({'entry': [tuple(path[-1][0]) for path in paths],
-                              'margin': [path[-1][1] for path in paths]})
-    uniqueSols = solutions.groupby('entry').mean(). \
-        sort_values('margin', ascending=False)
-    tops = uniqueSols.index[:top]
-    trainMargins[i, :] = \
-        uniqueSols.values[:top].T / scorer.nEntries * 100
-    otherScorers = scorers.copy()
-    otherScorers.pop(i)
-    for j, otherScorer in enumerate(otherScorers):
-        testMargins[i, j, :] = [otherScorer.margin(entry) /
-                                otherScorer.nEntries * 100 for entry in tops]
+    trainMargins = np.ones((nTrials, top))
+    testMargins = np.ones((nTrials, nTrials - 1, top))
 
-alpha = 0.05
-z = stats.norm.ppf(1 - alpha / 2)
-trainMean = trainMargins.mean(0)
-trainLo = trainMean - z * trainMargins.std(0)
-trainHi = trainMean + z * trainMargins.std(0)
-testMean = testMargins.mean((0, 1))
-testLo = testMean - z * testMargins.std((0, 1))
-testHi = testMean + z * testMargins.std((0, 1))
+    for i, scorer in enumerate(scorers):
+        entries = normEntries(lhs(field.shape[1], starts))
+        paths = [scorer.search(entry) for entry in entries]
+        solutions = pd.DataFrame(
+                {'entry': [tuple(path[-1][0]) for path in paths],
+                 'margin': [path[-1][1] for path in paths]})
+        uniqueSols = solutions.groupby('entry').mean(). \
+            sort_values('margin', ascending=False)
+        tops = uniqueSols.index[:top]
+        trainMargins[i, :] = uniqueSols.values[:top].T
+        otherScorers = scorers.copy()
+        otherScorers.pop(i)
+        for j, otherScorer in enumerate(otherScorers):
+            testMargins[i, j, :] = [otherScorer.margin(entry)
+                                    for entry in tops]
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-ax.plot(np.arange(top) + 1, trainMean, label='Train')
-ax.plot(np.arange(top) + 1, testMean, label='Test')
-ax.fill_between(np.arange(top) + 1, trainLo, trainHi, alpha=0.5, lw=0)
-ax.fill_between(np.arange(top) + 1, testLo, testHi, alpha=0.5, lw=0)
+    z = stats.norm.ppf(1 - alpha / 2)
+    trainMean = trainMargins.mean(0)
+    trainLo = trainMean - z * trainMargins.std(0)
+    trainHi = trainMean + z * trainMargins.std(0)
+    testMean = testMargins.mean((0, 1))
+    testLo = testMean - z * testMargins.std((0, 1))
+    testHi = testMean + z * testMargins.std((0, 1))
 
-ax.set_xlabel('Rank')
-ax.set_ylabel('Win Margin (%)')
-ax.legend(loc='upper right')
-ax.set_title('Generalizability of Optimal Entries')
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(np.arange(top) + 1, trainMean, label='Train')
+    ax.plot(np.arange(top) + 1, testMean, label='Test')
+    ax.fill_between(np.arange(top) + 1, trainLo, trainHi, alpha=0.5, lw=0)
+    ax.fill_between(np.arange(top) + 1, testLo, testHi, alpha=0.5, lw=0)
 
-fig.savefig('Generalizability of Optimal Entries 2')
+    ax.set_xlabel('Rank')
+    ax.set_ylabel('Win Margin (%)')
+    ax.legend(loc='upper right')
+    title = 'Generalizability of Optimal Entries 2'
+    if fldName is not None:
+        title += ', ' + fldName
+    ax.set_title(title)
 
-# %% Construct round 2 field
+    fig.savefig(title)
+
+plotGen2(fieldRd1, nTrials=30)
+
+# %% Predict round 2 field
 
 topAdvance = 10
 spaceThresh = 5
 
-scoreThresh = np.percentile(winMargins, 100 - topAdvance)
+scoreThresh = np.percentile(rd1Scorer.margins, 100 - topAdvance)
 
-paths = joblib.load('rd1Fld3600Opt.pkl')  # even later
+paths = joblib.load('rd1FldOpt.pkl')  # even later
 solutions = pd.DataFrame({'entry': [tuple(path[-1][0]) for path in paths],
                           'margin': [path[-1][1] for path in paths]})
 
@@ -631,7 +702,7 @@ uniques = pd.DataFrame({
     'entry': [np.array(entry) for entry in uniqueEntries.index],
     'margin': uniqueEntries.values.flatten()})
 
-winners = uniques.loc[(uniques.margin / fieldRd1.shape[0] * 100) > scoreThresh,
+winners = uniques.loc[(uniques.margin) > scoreThresh,
                       :]
 fieldRd1Winners = np.vstack(winners.entry)
 
@@ -642,48 +713,88 @@ spacedInds = np.array([(dists[:i] > spaceThresh).all()
                        for i, dists in enumerate(distances)])
 spacedWinners = fieldRd1Winners[spacedInds, :]
 
-fieldRd2 = np.vstack((spacedWinners, fieldRd1[winMargins > scoreThresh, :]))
-rd2Scorer = Scorer(fieldRd2, weights)
+fieldRd2Pred = np.vstack((spacedWinners,
+                          fieldRd1[rd1Scorer.margins > scoreThresh, :]))
 
-# %% Visualize round 2 field
+# %% Visualize predicted round 2 field
 
-records = rd2Scorer.scoreField()
-winMargins = (records[:, 0] - records[:, 2]) / records.shape[0] * 100
+rd2PredScorer = Scorer(fieldRd2Pred, weights)
 
-percentiles = np.array([stats.percentileofscore(winMargins, winMargin)
-                        for winMargin in winMargins])
-xPercentiles = np.linspace(0, 100, 500)
-yPercentiles = np.percentile(winMargins, xPercentiles)
+plotPercentiles(rd2PredScorer, fldName='Predicted Round 2')
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-ax.plot(xPercentiles, yPercentiles)
-ax.set_xlabel('Percentile (%)')
-ax.set_ylabel('Win Margin (%)')
-ax.set_title('Round 2 Field')
-fig.savefig('Win Margin Percentiles, Round 2')
+fig = plotHist(fieldRd2Pred, scores=rd2PredScorer.margins,
+               scoreLabel='Win Margin (%)', fieldName='Predicted Round 2')
+fig.savefig('Castle Histograms')
 
-fig = plotHist(fieldRd2, scores=winMargins, scoreLabel='Win Margin (%)',
-               fieldName='Round 2')
-fig.savefig('Castle Histograms, Round 2')
-fig = plotParCoords(fieldRd2, scores=percentiles, scoreLabel='Percentile (%)')
-fig.savefig('Parallel Coordinates Chart Percentile Colored, Round 2')
+fig = plotParCoords(fieldRd2Pred, scores=rd2PredScorer.percentiles,
+                    scoreLabel='Percentile (%)')
+fig.savefig('Parallel Coordinates Chart Percentile Colored, Predicted Round 2')
 
-# %% Find optimal troop distribution for round 2
+# %% Find best entries for predicted round 2
 
-starts = 1000  # extra thorough
+starts = 5000  # extra thorough
 entries = normEntries(lhs(nCastles, starts))
-paths = [rd2Scorer.search(entry) for entry in entries]
+paths = [rd2PredScorer.search(entry) for entry in entries]
+joblib.dump(paths, 'rd2PredFldOpt.pkl')  # saved for later
+# paths = joblib.load('rd2PredFldOpt.pkl')  # later
 
-solutions = pd.DataFrame({'entry': [tuple(path[-1][0]) for path in paths],
-                          'margin': [path[-1][1] for path in paths]})
-uniqueEntries = solutions.groupby('entry').mean(). \
-    sort_values('margin', ascending=False)
-uniques = pd.DataFrame({
-    'entry': [np.array(entry) for entry in uniqueEntries.index],
-    'margin': uniqueEntries.values.flatten()})
+# %% Print optimal entry for predicted round 2
 
-optEntry = uniques.loc[0, 'entry']
-optWinMargin = uniques.loc[0, 'margin'] / fieldRd2.shape[0] * 100
-print('''Optimal troop distribution:
-{} has a win margin of {:.0f}%'''.format(optEntry, optWinMargin))
+printOptEntry(paths, fldName='Predicted Round 2')
+
+# %% What's the distribution of these local minima?
+
+plotLocMax(paths, fldName='Predicted Round 2')
+
+# %% How many starts are needed to find the best one?
+
+plotOptConf(paths, fldName='Predicted Round 2')
+
+# %% How do the best solutions for a given field generalize? (CV solution)
+
+plotGen(fieldRd2Pred, cv=30, starts=200, fldName='Predicted Round 2')
+
+# %% How do the best solutions for a given field generalize?
+# % Not included in blog post
+
+plotGen2(fieldRd2Pred, nTrials=30, starts=200, fldName='Predicted Round 2')
+
+# %% Load actual round 2 field
+
+data2 = pd.read_csv('/Users/mattfay/Downloads/castle-solutions-2.csv')
+
+fieldRd2Act = data2.iloc[:, :-1].values.astype(np.uint8)
+
+# %% Visualize actual round 2 field
+
+rd2ActScorer = Scorer(fieldRd2Act, weights)
+
+plotPercentiles(rd2ActScorer, fldName='Actual Round 2')
+
+fig = plotHist(fieldRd2Act, scores=rd2ActScorer.margins,
+               scoreLabel='Win Margin (%)', fieldName='Actual Round 2')
+fig.savefig('Castle Histograms')
+
+fig = plotParCoords(fieldRd2Act, scores=rd2ActScorer.percentiles,
+                    scoreLabel='Percentile (%)')
+fig.savefig('Parallel Coordinates Chart Percentile Colored, Actual Round 2')
+
+# %% Find best entries to actual round 2
+
+starts = 5000
+entries = normEntries(lhs(nCastles, starts))
+paths = [rd2ActScorer.search(entry) for entry in entries]
+joblib.dump(paths, 'rd2ActFldOpt.pkl')  # saved for later
+# paths = joblib.load('rd2ActFldOpt.pkl')  # later
+
+# %% Print optimal entry for actual round 2
+
+printOptEntry(paths, fldName='Actual Round 2')
+
+# %% What's the distribution of these local minima?
+
+plotLocMax(paths, fldName='Actual Round 2')
+
+# %% How many starts are needed to find the best one?
+
+plotOptConf(paths, fldName='Actual Round 2')
