@@ -50,32 +50,34 @@ def pVacGivenSignVac(p1, p2, p3, pOcc):
     return pSignVacGivenVac * pVac / pSignVac
 
 
-n = 200
+n = 201
 
 p1, p2 = np.meshgrid(np.linspace(0, 1, n), np.linspace(0, 1, n))
 p3 = 1 - p1 - p2
 pOO = pOccGivenSignOcc(p1, p2, p3, pOcc)
 pVV = pVacGivenSignVac(p1, p2, p3, pOcc)
-pOO[p3 < 0] = np.nan
-pVV[p3 < 0] = np.nan
-vMin = min(pOO[np.isfinite(pOO)].min(), pVV[np.isfinite(pVV)].min())
-vMax = min(pOO[np.isfinite(pOO)].max(), pVV[np.isfinite(pVV)].max())
+pOO[p3 < np.sqrt(np.spacing(1))] = np.nan
+pVV[p3 < np.sqrt(np.spacing(1))] = np.nan
+vMin = np.round(min(pOO[np.isfinite(pOO)].min(), pVV[np.isfinite(pVV)].min()) *
+                100) / 100
+vMax = np.round(max(pOO[np.isfinite(pOO)].max(), pVV[np.isfinite(pVV)].max()) *
+                100) / 100
 
 plt.style.use('personal')
 
 fig = plt.figure()
 cmap = plt.get_cmap('plasma')
 levels = np.linspace(vMin, vMax, n)
-cLevels = np.linspace(0.1, 0.9, 9)
+cLevels = np.linspace(0.6, 0.9, 4)
 formatter = {l: '{:2.0f}%'.format(l * 100) for l in cLevels}
 
 ax = fig.add_subplot(1, 2, 1)
 ax.contourf(p3 * 100, p2 * 100, pOO, cmap=cmap, levels=levels)
 cs = ax.contour(p3 * 100, p2 * 100, pOO, levels=cLevels,
-                colors='k', linewidths=1, linestyles='dashed')
+                colors='w', linewidths=1, linestyles='dashed')
 ax.clabel(cs, fmt=formatter)
-ax.set_xlabel('Switch to Occupied Users (%)')
-ax.set_ylabel('Correct Users (%)')
+ax.set_xlabel('Correct Users (%)')
+ax.set_ylabel('Switch to Occupied Users (%)')
 ax.set_title('Occupied | "Occupied"')
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)
@@ -85,9 +87,9 @@ axs = [ax]
 ax = fig.add_subplot(1, 2, 2)
 ax.contourf(p3 * 100, p2 * 100, pVV, cmap=cmap, levels=levels)
 cs = ax.contour(p3 * 100, p2 * 100, pVV, levels=cLevels,
-                colors='k', linewidths=1, linestyles='dashed')
+                colors='w', linewidths=1, linestyles='dashed')
 ax.clabel(cs, fmt=formatter)
-ax.set_xlabel('Switch to Occupied Users (%)')
+ax.set_xlabel('Correct Users (%)')
 ax.set_title('Vacant | "Vacant"')
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)
