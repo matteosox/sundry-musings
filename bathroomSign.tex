@@ -1,0 +1,75 @@
+\documentclass[12 pt]{article}
+\usepackage{amsmath,amstext,amsgen,amsbsy,amsopn,amsfonts,graphicx, overcite,theorem}
+\renewcommand{\baselinestretch}{1.5}
+\begin{document}
+
+\begin{flushleft}
+
+Given:
+\begin{enumerate}
+\item[$\bullet$]{$\mathbb{P}(O_n|O) = p_n$, the probability the bathroom is occupied by a "do nothing" user, given that its occupied, i.e. the percentage of bathroom users who do nothing}
+\item[$\bullet$]{$\mathbb{P}(O_s|O) = p_s$, the probability the bathroom is occupied by a "switch to occupied" user, given that its occupied, i.e. the percentage of bathroom users who switch the sign to "Occupied"}
+\item[$\bullet$]{$\mathbb{P}(O_c|O) = p_c$, the probability the bathroom is occupied by a "correct" user, given that its occupied, i.e. the percentage of bathroom users who use the sign correctly}
+\item[$\bullet$]{$\mathbb{P}(O) = p_O$, the probability the bathroom is occupied, i.e. the percentage of time the bathroom is occupied}
+\end{enumerate}
+
+We want to know two things:
+\begin{enumerate}
+\item{$\mathbb{P}(O|``O")$, i.e. if you go to the bathroom and see that the sign on the door reads "Occupied," what is the probability that the bathroom is actually occupied?}
+\item{$\mathbb{P}(V|``V")$, i.e. if the sign reads "Vacant," what is the probability that the bathroom actually is vacant?}
+\end{enumerate}
+
+Tackling item one first, we start by invoking Bayes Rule:
+
+$$ \mathbb{P}(O|``O") = \frac{\mathbb{P}(``O"|O) \cdot \mathbb{P}(O)}{\mathbb{P}(``O")} = \frac{\mathbb{P}(``O"|O) \cdot p_O}{\mathbb{P}(``O")} $$
+
+Since $\mathbb{P}(O) = p_O$ from our given, we can focus on $\mathbb{P}(``O"|O)$, which can be decomposed into the three separate bathroom users:
+
+\begin{align}
+\mathbb{P}(``O"|O) &= \mathbb{P}(``O"|O_n) \cdot \mathbb{P}(O_n|O) + \mathbb{P}(``O"|O_s) \cdot \mathbb{P}(O_s|O) + \mathbb{P}(``O"|O_c) \cdot \mathbb{P}(O_c|O) \notag \\
+&=\mathbb{P}(``O"|O_n) \cdot p_n + \mathbb{P}(``O"|O_s) \cdot p_s + \mathbb{P}(``O"|O_c) \cdot p_c \notag
+\end{align}
+
+Again from our given, we can fill-in the probabilities for each group of users. As well, $\mathbb{P}(``O"|O_s) = \mathbb{P}(``O"|O_c) = 1$, but $\mathbb{P}(``O"|O_n)$ depends on who used the bathroom before the "do nothing" user:
+
+$$ \mathbb{P}(``O"|O_n) = \frac{p_s}{p_s + p_c} $$
+
+With that result, we can now solve for $\mathbb{P}(``O"|O)$:
+
+$$ \mathbb{P}(``O"|O) = \frac{p_s}{p_s + p_c} \cdot p_n + 1 \cdot p_s + 1 \cdot p_c $$
+
+Now, we just have to solve for $\mathbb{P}(``O")$. This time, we'll decompose this into the bathroom being vacant or occupied:
+
+\begin{align}
+\mathbb{P}(``O") &= \mathbb{P}(``O"|V) \cdot \mathbb{P}(V) + \mathbb{P}(``O"|O) \cdot \mathbb{P}(O) \notag \\
+&= \mathbb{P}(``O"|V) \cdot (1 - p_O) + \left(\frac{p_s}{p_s + p_c} \cdot p_n + 1 \cdot p_s + 1 \cdot p_c \right) \cdot p_O \notag
+\end{align}
+
+That leaves us with just needing to find $\mathbb{P}(``O"|V)$, i.e. the odds the bathroom sign says "Occupied" when its actually vacant. Since this depends on who used the bathroom previously, it turns out this is the same as $\mathbb{P}(``O"|O_n)$:
+
+\begin{align}
+\mathbb{P}(``O"|V) &= \frac{p_s}{p_s + p_c} \notag \\
+\Rightarrow \mathbb{P}(``O") &= \frac{p_s}{p_s + p_c} \cdot (1 - p_O) + \left(\frac{p_s}{p_s + p_c} \cdot p_n + 1 \cdot p_s + 1 \cdot p_c \right) \cdot p_O \notag \\
+&= \frac{p_s}{p_s + p_c} + p_c \cdot p_O \notag
+\end{align}
+
+Finally, we're able to calculate the original question, the probability the sign reads "Occupied" while the bathroom is actually occupied:
+
+$$ \mathbb{P}(O|``O") =  \frac{ \left( \frac{p_s \cdot p_n}{p_s + p_c} + p_s + p_c \right) \cdot p_O}{\frac{p_s}{p_s + p_c} + p_c \cdot p_O} $$
+
+Moving onto the second question, the probability the sign reads "Vacant" while the bathroom is actually vacant, we again start with Bayes Rule:
+
+$$ \mathbb{P}(V|``V") = \frac{\mathbb{P}(``V"|V) \cdot \mathbb{P}(V)}{\mathbb{P}(``V")} $$
+
+All our work answering part one makes this a breeze:
+
+\begin{align}
+\mathbb{P}(V) &= 1 - \mathbb{P}(O) = 1 - p_O \notag \\
+\mathbb{P}(``V") &= 1 - \mathbb{P}(``O") = 1 - \left(\frac{p_s}{p_s + p_c} + p_c \cdot p_O \right) = \frac{p_c}{p_s + p_c} - p_c \cdot p_O \notag \\
+\mathbb{P}(``V"|V) &= 1 -  \mathbb{P}(``O"|V) = 1 - \frac{p_s}{p_s + p_c} = \frac{p_c}{p_s + p_c} \notag \\
+\Rightarrow \mathbb{P}(V|``V") &= \frac{\frac{p_c}{p_s + p_c} \cdot (1 - p_O)}{\frac{p_c}{p_s + p_c} - p_c \cdot p_O} \notag
+\end{align}
+
+\end{flushleft}
+
+\end{document}

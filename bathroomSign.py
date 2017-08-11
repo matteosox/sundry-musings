@@ -78,7 +78,7 @@ cs = ax.contour(p3 * 100, p2 * 100, pOO, levels=cLevels,
 ax.clabel(cs, fmt=formatter)
 ax.set_xlabel('Correct Users (%)')
 ax.set_ylabel('Switch to Occupied Users (%)')
-ax.set_title('Occupied | "Occupied"')
+ax.set_title('Occupied|"Occupied"')
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)
 
@@ -90,7 +90,7 @@ cs = ax.contour(p3 * 100, p2 * 100, pVV, levels=cLevels,
                 colors='w', linewidths=1, linestyles='dashed')
 ax.clabel(cs, fmt=formatter)
 ax.set_xlabel('Correct Users (%)')
-ax.set_title('Vacant | "Vacant"')
+ax.set_title('Vacant|"Vacant"')
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)
 
@@ -100,3 +100,5 @@ sm = plt.cm.ScalarMappable(cmap=cmap)
 sm.set_array(levels * 100)
 cb = fig.colorbar(sm, ax=axs, orientation='vertical')
 cb.set_label('Probability (%)')
+
+fig.savefig('bathroomSign')
