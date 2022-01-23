@@ -4,13 +4,12 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-plt.style.use('personal')
+plt.style.use("personal")
 
 # %%
 
 
-class Office():
-
+class Office:
     def __init__(self, firstElection, parties, period):
         self.lastElection = firstElection
         self.year = firstElection
@@ -20,8 +19,10 @@ class Office():
 
     def elect(self):
         self._party = np.random.choice(self.parties)
-        self.lastElection = self.lastElection + \
-            ((self.year - self.lastElection) // self.period) * self.period
+        self.lastElection = (
+            self.lastElection
+            + ((self.year - self.lastElection) // self.period) * self.period
+        )
 
     @property
     def nextElection(self):
@@ -34,8 +35,7 @@ class Office():
         return self._party
 
 
-class Court():
-
+class Court:
     def __init__(self, nJustices, year, lifespan):
         self._year = year
         self.lifespan = lifespan
@@ -77,10 +77,10 @@ class Court():
                     del self.justiceEnds[k]
 
 
-class Government():
-
-    def __init__(self, firstElection, parties, senPeriod, presPeriod,
-                 nJustices, justiceLifespan):
+class Government:
+    def __init__(
+        self, firstElection, parties, senPeriod, presPeriod, nJustices, justiceLifespan
+    ):
         self.senate = Office(firstElection, parties, senPeriod)
         self.president = Office(firstElection, parties, presPeriod)
         self.court = Court(nJustices, firstElection, justiceLifespan)
@@ -91,8 +91,7 @@ class Government():
     @property
     def nextEvent(self):
         nextOpening = self.court.nextOpening
-        nextElection = min(self.senate.nextElection,
-                           self.president.nextElection)
+        nextElection = min(self.senate.nextElection, self.president.nextElection)
         if nextOpening is None:
             return nextElection
         return min(nextOpening, nextElection)
@@ -116,9 +115,11 @@ class Government():
 
     @property
     def state(self):
-        thing = {'year': self.year,
-                 'president': self.president.party,
-                 'senate': self.senate.party}
+        thing = {
+            "year": self.year,
+            "president": self.president.party,
+            "senate": self.senate.party,
+        }
         thing.update(self.court.justices)
         return thing
 
@@ -128,56 +129,60 @@ class Government():
             self.court.fillSeats()
         return self.state
 
+
 # %%
 
 start = 0
 end = 10000
-parties = ('D', 'R')
+parties = ("D", "R")
 senPeriod = 2
 presPeriod = 4
 nJustices = 9
 justiceLifespan = 40
 
-government = Government(start, parties, senPeriod, presPeriod,
-                        nJustices, justiceLifespan)
+government = Government(
+    start, parties, senPeriod, presPeriod, nJustices, justiceLifespan
+)
 
 history = pd.DataFrame()
 history = history.append(government.state, ignore_index=True)
 
-while history['year'].iloc[-1] < end:
+while history["year"].iloc[-1] < end:
     history = history.append(government.update(), ignore_index=True)
 
 # %%
 
-history['dt'] = np.concatenate((np.diff(history.year), [0]))
-history['emptySeats'] = \
-    (history.loc[:, range(1, nJustices + 1)] == 0).sum(axis=1)
-history['avEmpty'] = 0
+history["dt"] = np.concatenate((np.diff(history.year), [0]))
+history["emptySeats"] = (history.loc[:, range(1, nJustices + 1)] == 0).sum(axis=1)
+history["avEmpty"] = 0
 
 for i in range(1, history.shape[0]):
-    history['avEmpty'].iloc[i] = \
-        history[['dt', 'emptySeats']].iloc[:i, :].product(axis=1).sum(axis=0)\
-        / (history.year.iloc[i] - history.year.iloc[0])
+    history["avEmpty"].iloc[i] = history[["dt", "emptySeats"]].iloc[:i, :].product(
+        axis=1
+    ).sum(axis=0) / (history.year.iloc[i] - history.year.iloc[0])
 
 # %%
 
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
-ax.plot(history.year, history.avEmpty, label='Average Empty Seats')
-ax.plot(history.year, nJustices - history.emptySeats, label='Sitting Justices')
-ax.set_xlabel('Years')
-ax.set_ylabel('Justices')
-ax.set_title('FiveThirtyEight Puzzle')
+ax.plot(history.year, history.avEmpty, label="Average Empty Seats")
+ax.plot(history.year, nJustices - history.emptySeats, label="Sitting Justices")
+ax.set_xlabel("Years")
+ax.set_ylabel("Justices")
+ax.set_title("FiveThirtyEight Puzzle")
 ax.set_xlim(left=start, right=end)
 ax.set_ylim(bottom=0, top=nJustices + 0.5)
-ax.legend(loc='best')
+ax.legend(loc="best")
 
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
-data = history.groupby(by='emptySeats')['dt'].sum() / \
-    (history.year.iloc[-1] - history.year.iloc[0]) * 100
+data = (
+    history.groupby(by="emptySeats")["dt"].sum()
+    / (history.year.iloc[-1] - history.year.iloc[0])
+    * 100
+)
 ax.bar(data.index.values, data.values)
-ax.set_xlabel('Empty Seats on the Bench')
-ax.set_ylabel('Probability')
-ax.set_title('FiveThirtyEight Puzzle')
-ax.set_yscale('log')
+ax.set_xlabel("Empty Seats on the Bench")
+ax.set_ylabel("Probability")
+ax.set_title("FiveThirtyEight Puzzle")
+ax.set_yscale("log")
