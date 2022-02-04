@@ -59,6 +59,15 @@ class _SolutionMap(dict[str, "_SolutionMap"]):
         depths, counts = np.unique(list(self.leaf_depths.values()), return_counts=True)  # type: ignore
         return dict(zip(depths, counts))
 
+    def __str__(self) -> str:
+        text = self.guess
+        if not self.is_leaf:
+            text += " (not a leaf)"
+        for key, val in self.items():
+            lines = "\n    ".join(str(val).splitlines())
+            text += f"\n    - {key}: {lines}"
+        return text
+
 
 class Wordle:
     """Object for solving a given configuration of Wordle"""
