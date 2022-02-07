@@ -5,7 +5,6 @@ from unittest.mock import Mock
 
 from multiple_dispatch import multiple_dispatch
 
-
 DOC = """Dispatch function.
 Each signature & its docstring is appended below.
 
@@ -53,7 +52,9 @@ class TestMultipleDispatch(unittest.TestCase):
         mock_one_arg.assert_called_once_with(1)
         mock_two_typed_args.assert_called_once_with(1, "2")
 
-        with self.assertRaisesRegex(TypeError, r"func\(\) dispatch function has no matching signatures"):
+        with self.assertRaisesRegex(
+            TypeError, r"func\(\) dispatch function has no matching signatures"
+        ):
             func("2", 1)
 
     def test_multiple_dispatch_on_methods(self):
@@ -79,13 +80,17 @@ class TestMultipleDispatch(unittest.TestCase):
         obj.method()
         obj.method(1)
         obj.method(1, "2")
-        mock_no_args.assert_called_once_with(obj, )
+        mock_no_args.assert_called_once_with(
+            obj,
+        )
         mock_one_arg.assert_called_once_with(obj, 1)
         mock_two_typed_args.assert_called_once_with(obj, 1, "2")
 
-        with self.assertRaisesRegex(TypeError, r"method\(\) dispatch function has no matching signatures"):
+        with self.assertRaisesRegex(
+            TypeError, r"method\(\) dispatch function has no matching signatures"
+        ):
             obj.method("2", 1)
-    
+
     def test_multiple_dispatch_namespaces(self):
         """Test multiple_dispatch handles namespaces appropriately"""
         mock_method = Mock()
@@ -100,7 +105,6 @@ class TestMultipleDispatch(unittest.TestCase):
         def combust(arg):
             mock_func(arg)
 
-
         obj = Class()
         obj.combust()
         combust(obj)
@@ -109,6 +113,7 @@ class TestMultipleDispatch(unittest.TestCase):
 
     def test_multiple_dispatch_doc(self):
         """Test multiple_dispatch docstring formatting"""
+
         @multiple_dispatch
         def func():
             """
