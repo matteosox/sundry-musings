@@ -3,7 +3,7 @@ FROM condaforge/mambaforge:4.11.0-4 as build
 
 # Create Conda environment
 COPY requirements/conda-linux-64.lock docker/create_conda_env.sh ./
-RUN ./create_conda_env.sh
+RUN --mount=type=cache,target=/opt/conda/pkgs ./create_conda_env.sh
 
 FROM ubuntu:20.04 as runtime
 
@@ -23,7 +23,7 @@ RUN echo "source ~/.venv/bin/activate" | cat - ~/.bashrc > /tmp/out && mv /tmp/o
 SHELL ["/bin/bash", "--login", "-c"]
 
 # Install conda env
-COPY --from=build /venv .venv
+COPY --from=build /root/.venv /root/.venv
 
 # Setup config
 COPY config .config
