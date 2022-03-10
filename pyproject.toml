@@ -18,6 +18,7 @@ skip_gitignore = true
 line_length = 88
 
 [tool.mypy]
+plugins = ["numpy.typing.mypy_plugin"]
 cache_dir = "~/.cache/mypy"
 warn_unused_configs = true
 disallow_any_generics = true

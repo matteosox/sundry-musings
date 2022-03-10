@@ -33,9 +33,9 @@ def _expected_value(
     mean_num_left = []
     for guess_ind in possible_guesses:
         row = array[guess_ind]
-        _, counts = np.unique(row, return_counts=True)
+        _, counts = np.unique(row, return_counts=True)  # type: ignore
         mean_num_left.append(counts.dot(counts))
-    can_be_correct = np.isin(possible_guesses, possible_answers, assume_unique=True)
+    can_be_correct = np.isin(possible_guesses, possible_answers, assume_unique=True)  # type: ignore
     return (np.array(mean_num_left) - can_be_correct) / array.shape[1]  # type: ignore
 
 
@@ -51,10 +51,10 @@ def _minimax(
     max_num_left = []
     for guess_ind in possible_guesses:
         row = array[guess_ind]
-        _, counts = np.unique(row, return_counts=True)
+        _, counts = np.unique(row, return_counts=True)  # type: ignore
         max_num_left.append(counts.max())
-    can_be_correct = np.isin(possible_guesses, possible_answers, assume_unique=True)
-    return np.array(max_num_left) - can_be_correct * 0.1
+    can_be_correct = np.isin(possible_guesses, possible_answers, assume_unique=True)  # type: ignore
+    return np.array(max_num_left) - can_be_correct * 0.1  # type: ignore
 
 
 def _partitions(
@@ -69,9 +69,9 @@ def _partitions(
     partitions = []
     for guess_ind in possible_guesses:
         row = array[guess_ind]
-        partitions.append(np.unique(row).shape[0])
-    can_be_correct = np.isin(possible_guesses, possible_answers, assume_unique=True)
-    return -np.array(partitions) - can_be_correct * 0.1
+        partitions.append(np.unique(row).shape[0])  # type: ignore
+    can_be_correct = np.isin(possible_guesses, possible_answers, assume_unique=True)  # type: ignore
+    return -np.array(partitions) - can_be_correct * 0.1  # type: ignore
 
 
 def _entropy(
@@ -86,7 +86,7 @@ def _entropy(
     entropies = []
     for guess_ind in possible_guesses:
         row = array[guess_ind]
-        _, counts = np.unique(row, return_counts=True)
+        _, counts = np.unique(row, return_counts=True)  # type: ignore
         probs = counts / row.shape[0]
         entropies.append(probs.dot(np.log(probs)))
     return np.array(entropies)

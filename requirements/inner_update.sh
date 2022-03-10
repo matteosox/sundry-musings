@@ -6,4 +6,8 @@ source "$DIR/../docker/strict_mode.sh"
 
 export CUSTOM_COMPILE_COMMAND="requirements/update.sh"
 
-pip-compile --allow-unsafe --verbose requirements/requirements.in > requirements/requirements.txt
+cd requirements || exit 1
+
+pip-compile --allow-unsafe --verbose requirements.in > requirements.txt
+
+conda-lock --file environment.yaml --platform linux-64 --kind explicit

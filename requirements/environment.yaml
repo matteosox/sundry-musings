@@ -1,0 +1,28 @@
+name: myenv
+channels:
+  - conda-forge
+  - numba
+dependencies:
+  - python=3.9
+  - black
+  - bokeh
+  - conda-lock
+  - isort
+  - jupyter
+  - matplotlib
+  - mypy
+  - numba
+  - numba::icc_rt
+  - numpy
+  - pandas
+  - pip-tools
+  - pyinstrument
+  - pylint
+  - pytest
+  - scikit-learn
+  - scipy
+  - seaborn
+  - snakeviz
+  - statsmodels
+  - types-setuptools
+  - typing-extensions

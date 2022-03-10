@@ -18,10 +18,5 @@ apt-get update
 # Install security updates
 apt-get --yes upgrade
 
-# Add deadsnakes ppa to install other versions of Python
-apt-get --yes install --no-install-recommends software-properties-common
-add-apt-repository ppa:deadsnakes/ppa
-apt-get update
-
 # Install packages, without unnecessary recommended packages
 apt-get --yes install --no-install-recommends "$@"

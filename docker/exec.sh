@@ -4,7 +4,7 @@ source "$DIR"/strict_mode.sh
 
 # Execute a command inside docker
 
-OPTS=()
+EXEC_CMD=(--privileged)
 NAME="sundry-musings-$GIT_SHA"
 
 usage() {
@@ -14,7 +14,7 @@ usage() {
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -e | --env)
-            OPTS+=("--env" "$2")
+            EXEC_CMD+=("--env" "$2")
             shift 2
             ;;
         -h | --help)
@@ -22,7 +22,6 @@ while [[ "$#" -gt 0 ]]; do
             exit 0
             ;;
         *)
-            IFS=" " read -r -a CMD <<< "$@"
             break
             ;;
     esac
@@ -43,16 +42,17 @@ elif [[ "$STATE" == "exited" ]]; then
     docker start "$NAME"
 fi
 
-if [[ -z "${CMD[0]-}" ]]; then
-    OPTS+=("--interactive" "--tty")
-    CMD=("bash")
+if [[ "$#" = 0 ]]; then
+    EXEC_CMD+=(--interactive --tty "$NAME" bash)
+else
+    cp docker/inner_exec.sh .
+    printf "%q " "$@" | sed 's/.$/\n/' >> inner_exec.sh
+    EXEC_CMD+=("$NAME" ./inner_exec.sh)
 fi
 
-OPTS+=("$NAME")
-EXEC_CMD=("${OPTS[@]}" "${CMD[@]}")
-
 restart_timer() {
-    touch README.md
+    touch setup.cfg
+    rm -f inner_exec.sh
 }
 trap restart_timer EXIT
 

@@ -1,30 +1,41 @@
 # syntax=docker/dockerfile:1.2
-FROM ubuntu:20.04
+FROM condaforge/mambaforge:4.11.0-4 as build
+
+# Create Conda environment
+COPY requirements/conda-linux-64.lock docker/create_conda_env.sh ./
+RUN --mount=type=cache,target=/opt/conda/pkgs ./create_conda_env.sh
+
+FROM ubuntu:20.04 as runtime
 
 # Install OS-level packages
-COPY docker/install_packages.sh docker/install_shfmt.sh docker/timer.sh docker/install_fonts.sh  /usr/local/bin/
+COPY docker/install_fonts.sh docker/install_packages.sh docker/install_shfmt.sh docker/timer.sh /usr/local/bin/
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
-    install_packages.sh python3.9 python3.9-venv git shellcheck curl
+    install_packages.sh git shellcheck curl ca-certificates tini
 RUN install_shfmt.sh
 RUN install_fonts.sh
 
-# Create and activate virtual environment
-ENV VIRTUAL_ENV=/root/.venv
-RUN python3.9 -m venv "$VIRTUAL_ENV"
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Move to home directory
+WORKDIR /root
+
+# Make RUN commands use the new environment:
+RUN echo "source ~/.venv/bin/activate" | cat - ~/.bashrc > /tmp/out && mv /tmp/out ~/.bashrc
+SHELL ["/bin/bash", "--login", "-c"]
+
+# Install conda env
+COPY --from=build /root/.venv /root/.venv
 
 # Setup config
-COPY config /root/.config
-
-# Setup root home directory
-WORKDIR /root/sundry_musings
+COPY config .config
 
 # Install Python dependencies
-COPY requirements/requirements.txt "$VIRTUAL_ENV"
+COPY requirements/requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip setuptools wheel && \
-    pip install --requirement "$VIRTUAL_ENV"/requirements.txt
+    pip install --requirement requirements.txt
+
+# Move to repo directory
+WORKDIR /root/sundry_musings
 
 # Copy over source code and install using pip
 COPY src src
@@ -32,4 +43,5 @@ COPY pyproject.toml setup.cfg ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --editable .
 
+ENTRYPOINT ["tini", "-v", "--"]
 CMD [ "timer.sh" ]

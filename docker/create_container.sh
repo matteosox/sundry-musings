@@ -19,7 +19,6 @@ fi
 echo "Creating new Docker container"
 docker run \
     --detach \
-    --privileged \
     --publish 8888:8888 \
     --name "$CONTAINER_NAME" \
     --volume "$REPO_DIR":/root/sundry_musings \

@@ -137,7 +137,7 @@ class Scorer:
         self.nTroops = field.sum(1).max()
         self.weights = weights
         self.steps = np.zeros(
-            (self.nCastles ** 2 - self.nCastles, self.nCastles)
+            (self.nCastles**2 - self.nCastles, self.nCastles)
         ).astype(np.uint8)
         count = 0
         for i in range(self.nCastles):

@@ -2,10 +2,13 @@
 *
 
 # Except files we explicitly need, grouped by copy command
+!requirements/conda-linux-64.lock
+!docker/create_conda_env.sh
+
+!docker/install_fonts.sh
 !docker/install_packages.sh
 !docker/install_shfmt.sh
 !docker/timer.sh
-!docker/install_fonts.sh
 
 !config
 
