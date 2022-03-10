@@ -137,7 +137,7 @@ class Wordle:
                 possible_answers = self._next_possible_answers(
                     guess_ind, response_ind, possible_answers
                 )
-        return possible_answers
+        return possible_answers  # type: ignore
 
     def find_possible_guesses(
         self, guesses: Optional[dict[str, str]] = None
@@ -160,7 +160,7 @@ class Wordle:
                 possible_guesses = self._next_possible_guesses(
                     guess_ind, response_ind, possible_guesses
                 )
-        return possible_guesses
+        return possible_guesses  # type: ignore
 
     def _next_possible_answers(
         self, guess_ind: int, response_ind: UIntType, possible_answers: IntArrayType
@@ -286,7 +286,7 @@ class Wordle:
         else:
             guess_ind = self._find_best_guess(possible_guesses, possible_answers)
             solution_map = _SolutionMap(self.guesses[guess_ind])
-            possible_response_inds: UIntArrayType = np.unique(
+            possible_response_inds: UIntArrayType = np.unique(  # type: ignore
                 self._array[guess_ind, possible_answers]
             )
             for response_ind in possible_response_inds:

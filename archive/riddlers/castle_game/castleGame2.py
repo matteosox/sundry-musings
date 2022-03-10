@@ -128,7 +128,7 @@ class Scorer:
         self.nTroops = field.sum(1).max().astype(int)
         self.weights = weights
         self.steps = np.zeros(
-            (self.nCastles ** 2 - self.nCastles, self.nCastles)
+            (self.nCastles**2 - self.nCastles, self.nCastles)
         ).astype(np.uint8)
         count = 0
         for i in range(self.nCastles):
@@ -645,8 +645,8 @@ a = 2 / 3
 b = 100
 mu = (bins * bins.index).sum() / 100
 x0 = bins[67:].sum() / 33.5
-x1 = x2 = (mu + (a ** 3 * b / 2 - b / 2) * x0 - a ** 3 * b / 2) / (
-    a * b / 2 + a ** 2 * b / 2 - a ** 3 * b
+x1 = x2 = (mu + (a**3 * b / 2 - b / 2) * x0 - a**3 * b / 2) / (
+    a * b / 2 + a**2 * b / 2 - a**3 * b
 )
 x3 = 1 - x0 - x1 - x2
 

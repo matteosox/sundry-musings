@@ -10,11 +10,11 @@ echo "Installing shfmt"
 # shfmt in a place on the PATH for non-login shells
 
 cleanup() {
-    rm -rf .config/envman
-    rm -rf .local/bin/pathman .local/bin/shfmt .local/bin/webi
-    rm -rf .local/opt/pathman-* .local/opt/shfmt-*
-    rm -rf .local/share/virtualenv
-    rm -rf Downloads
+    rm -rf ~/.config/envman
+    rm -rf ~/.local/bin/pathman ~/.local/bin/shfmt ~/.local/bin/webi
+    rm -rf ~/.local/opt/pathman-* ~/.local/opt/shfmt-*
+    rm -rf ~/.local/share/virtualenv
+    rm -rf ~/Downloads
 }
 trap cleanup EXIT
 

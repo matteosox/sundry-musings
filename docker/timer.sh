@@ -12,7 +12,7 @@ start_timer() {
 get_timer() {
     PIDS=$(ps -A --format pid --no-headers)
     NUM_PIDS=$(echo "$PIDS" | wc -l)
-    if [[ "$NUM_PIDS" -gt 3 ]]; then
+    if [[ "$NUM_PIDS" -gt 4 ]]; then
         # Other processes detected, so restarting timer
         start_timer
         ELAPSED=0
